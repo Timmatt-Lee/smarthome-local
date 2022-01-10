@@ -201,6 +201,8 @@ app.onSync(async (body, headers) => {
 
   functions.logger.log(`agentId = ${agentId}`);
 
+  const [defaultDeviceObj] = await queryDevicesFromUserId(userId);
+
   // FIXME: 我應該要有個 middleware 擋在這個 app 前面，然後去做身份驗證，讓這邊都只用 agentId 去做事
   //        不過因為現在先偷懶，所以只有在 onSync 的時候去真的判斷使用者，其他的函式就不判斷了，反正大家都是洗衣機
   return {
@@ -217,9 +219,9 @@ app.onSync(async (body, headers) => {
             'action.devices.traits.RunCycle',
           ],
           name: {
-            defaultNames: [`${userId}'s Washer`],
-            name: `${userId}'s Washer`,
-            nicknames: [`${userId}'s Washer`],
+            defaultNames: [defaultDeviceObj.defaultName],
+            name: defaultDeviceObj.defaultName,
+            nicknames: [defaultDeviceObj.defaultName],
           },
           deviceInfo: {
             manufacturer: 'Acme Co',
@@ -278,7 +280,16 @@ const queryDevice = async (deviceId) => {
       .child('devices')
       .child(deviceId)
       .once('value');
-  const snapshotVal = snapshot.val();
+  return snapshot.val();
+};
+
+const queryDevicesFromUserId = async (userId) =>{
+  // TODO: 這邊應該用 db 外鍵去紀錄這個使用者有哪些裝置
+  return [await queryDevice(`${userId}Washer`)];
+};
+
+const getSmartHomeDevice = async (deviceId) => {
+  const snapshotVal = await queryDevice(deviceId);
 
   return {
     on: snapshotVal.OnOff.on,
@@ -306,7 +317,7 @@ app.onQuery(async (body) => {
   for (const device of intent.payload.devices) {
     const deviceId = device.id;
     queryPromises.push(
-        queryDevice(deviceId).then((data) => {
+        getSmartHomeDevice(deviceId).then((data) => {
         // Add response to device payload
           payload.devices[deviceId] = data;
         }),
