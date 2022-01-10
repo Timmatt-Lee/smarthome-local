@@ -105,7 +105,7 @@ SmartHome.prototype.updateState = () => {
 
 
   console.log(pkg);
-  firebase.database().ref('/').child('washer').set(pkg);
+  firebase.database().ref('/').child('devices').child('TimmattWasher').set(pkg);
 }
 
 // Load the SmartHome.

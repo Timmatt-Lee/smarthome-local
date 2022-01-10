@@ -1,4 +1,11 @@
 {
-  "cSpell.words": ["homegraph", "pausable", "responseurl"],
+  "cSpell.words": [
+    "homegraph",
+    "pausable",
+    "reportstate",
+    "requestsync",
+    "responseurl",
+    "updatestate"
+  ],
   "editor.formatOnSave": true
 }
