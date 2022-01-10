@@ -401,11 +401,11 @@ exports.smarthome = functions.https.onRequest(app);
 
 exports.requestsync = functions.https.onRequest(async (request, response) => {
   response.set('Access-Control-Allow-Origin', '*');
-  functions.logger.info(`Request SYNC for user ${request.agentUserId}`);
+  functions.logger.info(`Request SYNC for user ${request.query.agentUserId}`);
   try {
     const res = await homegraph.devices.requestSync({
       requestBody: {
-        agentUserId: request.agentUserId,
+        agentUserId: request.query.agentUserId,
       },
     });
     functions.logger.info('Request sync response:', res.status, res.data);
