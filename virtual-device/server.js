@@ -27,6 +27,12 @@ const argv = require(`yargs`)
       demandOption: true,
       type: 'string',
     },
+    dbDeviceId: {
+      description: 'Db device id.',
+      requiresArg: true,
+      demandOption: true,
+      type: 'string',
+    },
     projectId: {
       description: 'Google Actions project id.',
       requiresArg: true,
@@ -47,7 +53,8 @@ const argv = require(`yargs`)
     },
   })
   .example(
-    `$0 \\\n\t--deviceId=deviceid123 --projectId=blue-jet-123 \\\n\t--discoveryPacket=HelloLocalHomeSDK --discoveryPortOut=3311`
+    // eslint-disable-next-line max-len
+    `$0 \\\n\t--deviceId=deviceid123 --dbDeviceId=abc123 --projectId=blue-jet-123 \\\n\t--discoveryPacket=HelloLocalHomeSDK --discoveryPortOut=3311`
   )
   .wrap(120)
   .help()
@@ -56,7 +63,7 @@ const argv = require(`yargs`)
 const SERVER_PORT = 3388;
 
 // Create a washer device
-const virtualDevice = new Washer(argv.projectId);
+const virtualDevice = new Washer(argv.projectId, argv.dbDeviceId);
 
 // Start the UDP server
 const udpServer = dgram.createSocket('udp4');
