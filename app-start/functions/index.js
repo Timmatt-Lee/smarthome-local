@@ -65,7 +65,8 @@ exports.login = functions.https.onRequest((request, response) => {
     // HACK: 我先直接用使用者名稱 base64 傳回去，不過最好應該還是造一個臨時 token 存在 db
     //       然後等下面的 faketoken 一跑進去，驗證這個臨時 token ！這個 token 就直接作廢
     //       而且這個 token 在 db 的時候應該是要指定這個使用者的
-    const responseurl = util.format('%s&code=%s',
+    const responseurl = util.format(
+        '%s&code=%s',
         decodeURIComponent(request.body.responseurl),
         Buffer.from(request.body.userId).toString('base64'),
     );
@@ -78,24 +79,29 @@ exports.login = functions.https.onRequest((request, response) => {
 });
 
 exports.fakeauth = functions.https.onRequest((request, response) => {
-  const responseurl = util.format('%s?state=%s',
-      decodeURIComponent(request.query.redirect_uri), request.query.state);
+  const responseurl = util.format(
+      '%s?state=%s',
+      decodeURIComponent(request.query.redirect_uri),
+      request.query.state,
+  );
   functions.logger.log(`Set redirect as ${responseurl}`);
   return response.redirect(
-      `/login?responseurl=${encodeURIComponent(responseurl)}`);
+      `/login?responseurl=${encodeURIComponent(responseurl)}`,
+  );
 });
 
 exports.faketoken = functions.https.onRequest(async (request, response) => {
   const grantType = request.query.grant_type ?
-  request.query.grant_type : request.body.grant_type;
+    request.query.grant_type :
+    request.body.grant_type;
   const refreshToken = request.query.refresh_token ?
-  request.query.refresh_token : request.body.refresh_token;
+    request.query.refresh_token :
+    request.body.refresh_token;
 
   const secondsInDay = 86400; // 60 * 60 * 24
   const HTTP_STATUS_OK = 200;
 
   let obj;
-
 
   const accessToken = randomUUID();
 
@@ -108,18 +114,25 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
       userId,
     });
 
-    await firebaseRef.child('userAccessTokens').child(accessToken).set({
-      expiredAt: new Date()+secondsInDay,
-      userId,
-    });
+    await firebaseRef
+        .child('userAccessTokens')
+        .child(accessToken)
+        .set({
+          expiredAt: new Date() + secondsInDay,
+          userId,
+        });
 
     const refreshToken = randomUUID();
 
-    await firebaseRef.child('userAccessTokens').child(refreshToken).set({
-      expiredAt: new Date()+secondsInDay,
-      userId,
-      isRefreshToken: true,
-    });
+    await firebaseRef
+        .child('userAccessTokens')
+        .child(refreshToken)
+        .set({
+          expiredAt: new Date() + secondsInDay,
+          userId,
+          accessToken,
+          isRefreshToken: true,
+        });
 
     obj = {
       token_type: 'bearer',
@@ -128,23 +141,41 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
       expires_in: secondsInDay,
     };
   } else if (grantType === 'refresh_token') {
-    const snapshot = await firebaseRef.child('userAccessTokens')
-        .child(refreshToken).once('value');
+    const snapshot = await firebaseRef
+        .child('userAccessTokens')
+        .child(refreshToken)
+        .once('value');
+
+    functions.logger.log('Refresh Token', {
+      refreshToken,
+    });
 
     if (snapshot.val() == null) {
+      functions.logger.warn('Cannot find in db', {
+        refreshToken,
+      });
       response.status(400).json({error: 'invalid_grant'});
       return;
     }
 
-    const {isRefreshToken, userId} = snapshot.val();
+    const {
+      isRefreshToken,
+      userId,
+      accessToken: oldAccessToken,
+    } = snapshot.val();
     assert.ok(isRefreshToken === true);
 
     // TODO: 把原本的舊有 token disable 掉
 
-    await firebaseRef.child('userAccessTokens').child(accessToken).set({
-      expiredAt: new Date()+secondsInDay,
-      userId,
-    });
+    await firebaseRef.child('userAccessTokens').child(oldAccessToken).remove();
+
+    await firebaseRef
+        .child('userAccessTokens')
+        .child(accessToken)
+        .set({
+          expiredAt: new Date() + secondsInDay,
+          userId,
+        });
 
     obj = {
       token_type: 'bearer',
@@ -152,8 +183,7 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
       expires_in: secondsInDay,
     };
   }
-  response.status(HTTP_STATUS_OK)
-      .json(obj);
+  response.status(HTTP_STATUS_OK).json(obj);
 });
 
 const app = smarthome();
@@ -161,7 +191,13 @@ const app = smarthome();
 app.onSync(async (body, headers) => {
   functions.logger.log('onSync', {body, headers});
 
-  const {id: userId, agentId} = await queryUserFromHeaders(headers);
+  const userDoc = await queryUserFromHeaders(headers);
+  if (userDoc === undefined) {
+    functions.logger.warn('Cannot found user in db while onSync.');
+    return {};
+  }
+
+  const {id: userId, agentId} = userDoc;
 
   functions.logger.log(`agentId = ${agentId}`);
 
@@ -171,75 +207,90 @@ app.onSync(async (body, headers) => {
     requestId: body.requestId,
     payload: {
       agentUserId: agentId,
-      devices: [{
-        id: `${userId}Washer`,
-        type: 'action.devices.types.WASHER',
-        traits: [
-          'action.devices.traits.OnOff',
-          'action.devices.traits.StartStop',
-          'action.devices.traits.RunCycle',
-        ],
-        name: {
-          defaultNames: [`${userId}'s Washer`],
-          name: `${userId}'s Washer`,
-          nicknames: [`${userId}'s Washer`],
+      devices: [
+        {
+          id: `${userId}Washer`,
+          type: 'action.devices.types.WASHER',
+          traits: [
+            'action.devices.traits.OnOff',
+            'action.devices.traits.StartStop',
+            'action.devices.traits.RunCycle',
+          ],
+          name: {
+            defaultNames: [`${userId}'s Washer`],
+            name: `${userId}'s Washer`,
+            nicknames: [`${userId}'s Washer`],
+          },
+          deviceInfo: {
+            manufacturer: 'Acme Co',
+            model: 'acme-washer',
+            hwVersion: '1.0',
+            swVersion: '1.0.1',
+          },
+          willReportState: true,
+          attributes: {
+            pausable: true,
+          },
+          otherDeviceIds: [
+            {
+              deviceId: 'TimmattVirtualDevice1',
+            },
+          ],
         },
-        deviceInfo: {
-          manufacturer: 'Acme Co',
-          model: 'acme-washer',
-          hwVersion: '1.0',
-          swVersion: '1.0.1',
-        },
-        willReportState: true,
-        attributes: {
-          pausable: true,
-        },
-        otherDeviceIds: [{
-          deviceId: 'TimmattVirtualDevice1',
-        }],
-      }],
+      ],
     },
   };
 });
 
-const queryUser = async (userId)=>{
-  const snapshot = await firebaseRef.child('users')
-      .child(userId).once('value');
+const queryUser = async (userId) => {
+  const snapshot = await firebaseRef.child('users').child(userId).once('value');
   const result = snapshot.val();
   result.id = userId;
   return result;
 };
 
-const queryUserByToken = async (token)=>{
-  const snapshot = await firebaseRef.child('userAccessTokens')
-      .child(token).once('value');
+const queryUserByToken = async (token) => {
+  const snapshot = await firebaseRef
+      .child('userAccessTokens')
+      .child(token)
+      .once('value');
 
   // TODO: 檢查是否過期
+
+  if (snapshot.val() == null) {
+    return undefined;
+  }
 
   const {userId} = snapshot.val();
   return queryUser(userId);
 };
 
-const queryUserFromHeaders = async (headers) =>{
+const queryUserFromHeaders = async (headers) => {
   const bearerToken = headers.authorization.substring(
-      7, headers.authorization.length);
+      7,
+      headers.authorization.length,
+  );
   return queryUserByToken(bearerToken);
 };
 
 const queryDevice = async (deviceId) => {
-  const snapshot = await firebaseRef.child('devices')
-      .child(deviceId).once('value');
+  const snapshot = await firebaseRef
+      .child('devices')
+      .child(deviceId)
+      .once('value');
   const snapshotVal = snapshot.val();
 
   return {
     on: snapshotVal.OnOff.on,
     isPaused: snapshotVal.StartStop.isPaused,
     isRunning: snapshotVal.StartStop.isRunning,
-    currentRunCycle: [{
-      currentCycle: 'rinse',
-      nextCycle: 'spin',
-      lang: 'en',
-    }],
+    currentRunCycle: [
+      {
+        currentCycle: 'rinse',
+        nextCycle: 'spin',
+        lang: 'en',
+      },
+    ],
     currentTotalRemainingTime: 1212,
     currentCycleRemainingTime: 301,
   };
@@ -254,12 +305,12 @@ app.onQuery(async (body) => {
   const intent = body.inputs[0];
   for (const device of intent.payload.devices) {
     const deviceId = device.id;
-    queryPromises.push(queryDevice(deviceId)
-        .then((data) => {
+    queryPromises.push(
+        queryDevice(deviceId).then((data) => {
         // Add response to device payload
           payload.devices[deviceId] = data;
-        },
-        ));
+        }),
+    );
   }
   // Wait for all promises to resolve
   await Promise.all(queryPromises);
@@ -271,7 +322,8 @@ app.onQuery(async (body) => {
 
 const updateDevice = async (execution, deviceId) => {
   const {params, command} = execution;
-  let state; let ref;
+  let state;
+  let ref;
 
   switch (command) {
     case 'action.devices.commands.OnOff':
@@ -288,8 +340,7 @@ const updateDevice = async (execution, deviceId) => {
       break;
   }
 
-  return ref.update(state)
-      .then(() => state);
+  return ref.update(state).then(() => state);
 };
 
 app.onExecute(async (body) => {
@@ -358,20 +409,21 @@ exports.requestsync = functions.https.onRequest(async (request, response) => {
  * Send a REPORT STATE call to the homegraph when data for any device id
  * has been changed.
  */
-exports.reportstate = functions.database.ref('devices/{deviceId}').onWrite(
-    async (change, context) => {
+exports.reportstate = functions.database
+    .ref('devices/{deviceId}')
+    .onWrite(async (change, context) => {
       functions.logger.info('Firebase write event triggered Report State');
       const snapshot = change.after.val();
 
       const {agentId: agentUserId} = await queryUser(snapshot.userId);
 
       const requestBody = {
-        requestId: 'ff36a3cc', /* Any unique ID */
+        requestId: 'ff36a3cc' /* Any unique ID */,
         agentUserId,
         payload: {
           devices: {
             states: {
-              /* Report the current state of our washer */
+            /* Report the current state of our washer */
               [context.params.deviceId]: {
                 on: snapshot.OnOff.on,
                 isPaused: snapshot.StartStop.isPaused,
