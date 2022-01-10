@@ -21,6 +21,7 @@ const {smarthome} = require('actions-on-google');
 const {google} = require('googleapis');
 const util = require('util');
 const admin = require('firebase-admin');
+const {randomUUID} = require('crypto');
 // Initialize Firebase
 admin.initializeApp();
 const firebaseRef = admin.database().ref('/');
@@ -45,7 +46,14 @@ exports.login = functions.https.onRequest((request, response) => {
         <form action="/login" method="post">
           <input type="hidden"
             name="responseurl" value="${request.query.responseurl}" />
-          <button type="submit" style="font-size:14pt">
+          <input type="radio" id="userIdTimmatt" name="userId" 
+            value="Timmatt" checked>
+          <label for="userIdTimmatt">Timmatt</label><br>
+          <input type="radio" id="userIdJohn" name="userId" value="John">
+          <label for="userIdJohn">John</label><br>
+          <input type="radio" id="userIdMT" name="userId" value="MT">
+          <label for="userIdMT">MT</label><br>
+          <button type="submit">
             Link this service to Google
           </button>
         </form>
@@ -55,7 +63,13 @@ exports.login = functions.https.onRequest((request, response) => {
   } else if (request.method === 'POST') {
     // Here, you should validate the user account.
     // In this sample, we do not do that.
-    const responseurl = decodeURIComponent(request.body.responseurl);
+    // HACK: 我先直接用使用者名稱 base64 傳回去，不過最好應該還是造一個臨時 token 存在 db
+    //       然後等下面的 faketoken 一跑進去，驗證這個臨時 token ！這個 token 就直接作廢
+    //       而且這個 token 在 db 的時候應該是要指定這個使用者的
+    const responseurl = util.format('%s&code=%s',
+        decodeURIComponent(request.body.responseurl),
+        Buffer.from(request.body.userId).toString('base64'),
+    );
     functions.logger.log(`Redirect to ${responseurl}`);
     return response.redirect(responseurl);
   } else {
@@ -65,33 +79,61 @@ exports.login = functions.https.onRequest((request, response) => {
 });
 
 exports.fakeauth = functions.https.onRequest((request, response) => {
-  const responseurl = util.format('%s?code=%s&state=%s',
-      decodeURIComponent(request.query.redirect_uri), 'xxxxxx',
-      request.query.state);
+  const responseurl = util.format('%s?state=%s',
+      decodeURIComponent(request.query.redirect_uri), request.query.state);
   functions.logger.log(`Set redirect as ${responseurl}`);
   return response.redirect(
       `/login?responseurl=${encodeURIComponent(responseurl)}`);
 });
 
-exports.faketoken = functions.https.onRequest((request, response) => {
+exports.faketoken = functions.https.onRequest(async (request, response) => {
   const grantType = request.query.grant_type ?
-    request.query.grant_type : request.body.grant_type;
+  request.query.grant_type : request.body.grant_type;
+  const refreshToken = request.query.refresh_token ?
+  request.query.refresh_token : request.body.refresh_token;
+
+  // HACK: 照理說應該要去 db 拿 這個臨時 token，先去檢驗有沒有是不是有過期，然後再來對照他的使用者是誰，找到這個使用者這樣
+  const userId = Buffer.from(request.body.code, 'base64').toString('ascii');
+
   const secondsInDay = 86400; // 60 * 60 * 24
   const HTTP_STATUS_OK = 200;
-  functions.logger.log(`Grant type ${grantType}`);
+
+  functions.logger.log('fakeToken', {
+    grantType, refreshToken, userId,
+  });
 
   let obj;
+
+  const accessToken = randomUUID();
+
+  // TODO: 如果找不到使用者？要處理這個錯誤
+
+  await firebaseRef.child('userAccessTokens').child(accessToken).set({
+    expiredAt: new Date()+secondsInDay,
+    userId,
+  });
+
+  await firebaseRef.child('users').child(userId)
+      .child('expiredAt').set(new Date()+secondsInDay);
+
+  await firebaseRef.child('users').child(userId)
+      .child('accessToken').set(accessToken);
+
   if (grantType === 'authorization_code') {
     obj = {
       token_type: 'bearer',
-      access_token: '123access',
+      access_token: accessToken,
       refresh_token: '123refresh',
       expires_in: secondsInDay,
     };
   } else if (grantType === 'refresh_token') {
+    if (refreshToken !== '123refresh') {
+      response.status(400).json({error: 'invalid_grant'});
+      return;
+    }
     obj = {
       token_type: 'bearer',
-      access_token: '123access',
+      access_token: accessToken,
       expires_in: secondsInDay,
     };
   }
@@ -101,11 +143,21 @@ exports.faketoken = functions.https.onRequest((request, response) => {
 
 const app = smarthome();
 
-app.onSync((body) => {
+app.onSync((body, headers) => {
+  functions.logger.log('onSync', {body, headers});
+
+  const bearerToken = headers.authorization.substring(
+      7, headers.authorization.length);
+  const {userId, agentId} = queryUserByToken(bearerToken);
+
+  functions.logger.log(`agentId = ${agentId}`);
+
+  // FIXME: 我應該要有個 middleware 擋在這個 app 前面，然後去做身份驗證，讓這邊都只用 agentId 去做事
+  //        不過因為現在先偷懶，所以只有在 onSync 的時候去真的判斷使用者，其他的函式就不判斷了，反正大家都是洗衣機
   return {
     requestId: body.requestId,
     payload: {
-      agentUserId: USER_ID,
+      agentUserId: agentId,
       devices: [{
         id: 'washer',
         type: 'action.devices.types.WASHER',
@@ -115,9 +167,9 @@ app.onSync((body) => {
           'action.devices.traits.RunCycle',
         ],
         name: {
-          defaultNames: ['My Washer'],
-          name: 'Washer',
-          nicknames: ['Washer'],
+          defaultNames: [`${userId}'s Washer`],
+          name: `${userId}'s Washer`,
+          nicknames: [`${userId}'s Washer`],
         },
         deviceInfo: {
           manufacturer: 'Acme Co',
@@ -129,13 +181,15 @@ app.onSync((body) => {
         attributes: {
           pausable: true,
         },
-        // TODO: Add otherDeviceIds for local execution
+        otherDeviceIds: [{
+          deviceId: 'TimmattVirtualDevice1',
+        }],
       }],
     },
   };
 });
 
-const queryFirebase = async (deviceId) => {
+const queryFirebase = async (deviceId)=> {
   const snapshot = await firebaseRef.child(deviceId).once('value');
   const snapshotVal = snapshot.val();
   return {
@@ -144,6 +198,26 @@ const queryFirebase = async (deviceId) => {
     isRunning: snapshotVal.StartStop.isRunning,
   };
 };
+
+const queryUser = async (userId)=>{
+  const snapshot = await firebaseRef.child('users')
+      .child(userId).once('value');
+  const result = snapshot.val();
+  result.id = userId;
+  return result;
+};
+
+const queryUserByToken = async (token)=>{
+  const snapshot = await firebaseRef.child('userAccessTokens')
+      .child(token).once('value');
+
+  // TODO: 檢查是否過期
+
+  const {userId} = snapshot.val();
+  return queryUser(userId);
+};
+
+
 const queryDevice = async (deviceId) => {
   const data = await queryFirebase(deviceId);
   return {
@@ -257,6 +331,7 @@ exports.requestsync = functions.https.onRequest(async (request, response) => {
   try {
     const res = await homegraph.devices.requestSync({
       requestBody: {
+        // TODO: 這邊要去讀取他的 agentId
         agentUserId: USER_ID,
       },
     });
