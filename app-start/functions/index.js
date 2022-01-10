@@ -146,9 +146,7 @@ const app = smarthome();
 app.onSync(async (body, headers) => {
   functions.logger.log('onSync', {body, headers});
 
-  const bearerToken = headers.authorization.substring(
-      7, headers.authorization.length);
-  const {userId, agentId} = await queryUserByToken(bearerToken);
+  const {userId, agentId} = await queryUserFromHeaders(headers);
 
   functions.logger.log(`agentId = ${agentId}`);
 
@@ -205,6 +203,12 @@ const queryUser = async (userId)=>{
   const result = snapshot.val();
   result.id = userId;
   return result;
+};
+
+const queryUserFromHeaders = async (headers) =>{
+  const bearerToken = headers.authorization.substring(
+      7, headers.authorization.length);
+  return queryUserByToken(bearerToken);
 };
 
 const queryUserByToken = async (token)=>{
