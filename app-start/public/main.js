@@ -101,7 +101,8 @@ SmartHome.prototype.updateState = () => {
       isPaused: elStartStopPaused.classList.contains('is-checked'),
       isRunning: elStartStopRunning.classList.contains('is-checked')
     },
-    userId: 'Timmatt'
+    userId: 'Timmatt',
+    defaultName: 'Timmatt\'s Washer'
   };
 
 
