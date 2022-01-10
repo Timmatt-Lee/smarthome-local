@@ -49,8 +49,8 @@ SmartHome.prototype.initFirebase = () => {
 
 SmartHome.prototype.initWasher = () => {
   console.log("Logged in as default user");
-  this.uid = "123";
-  this.smarthome.userWelcome.innerHTML = "Welcome user 123!";
+  this.uid = "Timmatt";
+  this.smarthome.userWelcome.innerHTML = "Welcome user Timmatt!";
 
   this.smarthome.handleData();
   this.smarthome.washer.style.display = "block";
@@ -67,7 +67,7 @@ SmartHome.prototype.handleData = () => {
   const elStartStopPaused = document.getElementById('demo-washer-startStopPaused');
   const elStartStopRunning = document.getElementById('demo-washer-startStopRunning');
 
-  firebase.database().ref('/').child('washer').on("value", (snapshot) => {
+  firebase.database().ref('/').child('devices').child('TimmattWasher').on("value", (snapshot) => {
     if (snapshot.exists()) {
       const washerState = snapshot.val();
       console.log(washerState)
