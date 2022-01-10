@@ -24,9 +24,11 @@ class Washer {
   /**
    * Create a new washer instance
    * @param {string} projectId Endpoint to publish state updates
+   * @param {string} deviceId Device id on cloud db
    */
-  constructor(projectId) {
+  constructor(projectId, deviceId) {
     this.reportStateEndpointUrl = `https://${projectId}.firebaseapp.com/updatestate`;
+    this.deviceId = deviceId;
     this._state = {
       on: false,
       isRunning: false,
@@ -62,7 +64,9 @@ class Washer {
    * Publish the current state to remote endpoint
    */
   reportState() {
-    axios.post(this.reportStateEndpointUrl, this._state)
+    axios.post(this.reportStateEndpointUrl, {
+      deviceId: this.deviceId, ...this._state,
+    })
       .then((res) => {
         logger.info('Report State successful');
       })

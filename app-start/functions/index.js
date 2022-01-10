@@ -444,7 +444,7 @@ exports.reportstate = functions.database
  * Update the current state of the washer device
  */
 exports.updatestate = functions.https.onRequest((request, response) => {
-  firebaseRef.child('washer').update({
+  firebaseRef.child('devices').child(request.body.deviceId).update({
     OnOff: {
       on: request.body.on,
     },

@@ -57,7 +57,7 @@ class LocalExecutionApp {
       requestId: request.requestId,
       payload: {
         device: {
-          id: "washer",
+          id: this.app.getDeviceManager().getRegisteredDevices()[0].id,
           verificationId: localDeviceId.toString(),
         },
       },
@@ -150,7 +150,7 @@ class LocalExecutionApp {
         return {};
     }
   }
-} 
+}
 
 const localHomeSdk = new App("1.0.0");
 const localApp = new LocalExecutionApp(localHomeSdk);
