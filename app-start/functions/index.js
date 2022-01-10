@@ -22,6 +22,7 @@ const {google} = require('googleapis');
 const util = require('util');
 const admin = require('firebase-admin');
 const {randomUUID} = require('crypto');
+const assert = require('assert');
 // Initialize Firebase
 admin.initializeApp();
 const firebaseRef = admin.database().ref('/');
@@ -129,12 +130,14 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
   } else if (grantType === 'refresh_token') {
     const snapshot = await firebaseRef.child('userAccessTokens')
         .child(refreshToken).once('value');
-    const {isRefreshToken, userId} = snapshot.val();
 
-    if (isRefreshToken !== true) {
+    if (snapshot == null) {
       response.status(400).json({error: 'invalid_grant'});
       return;
     }
+
+    const {isRefreshToken, userId} = snapshot.val();
+    assert.ok(isRefreshToken === true);
 
     // TODO: 把原本的舊有 token disable 掉
 
