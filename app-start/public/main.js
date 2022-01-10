@@ -29,7 +29,7 @@ function SmartHome() {
     this.requestSync = document.getElementById('request-sync');
     this.requestSync.addEventListener('click', async () => {
       try {
-        const response = await fetch('/requestsync');
+        const response = await fetch('/requestsync?agentUserId=TimmattAgentId');
         console.log(response.status == 200 ?
           'Request SYNC success!' : `Request SYNC unexpected status: ${response.status}`);
       } catch (err) {
