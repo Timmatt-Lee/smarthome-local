@@ -131,7 +131,7 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
     const snapshot = await firebaseRef.child('userAccessTokens')
         .child(refreshToken).once('value');
 
-    if (snapshot == null) {
+    if (snapshot.val() == null) {
       response.status(400).json({error: 'invalid_grant'});
       return;
     }
