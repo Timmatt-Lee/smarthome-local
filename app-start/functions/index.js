@@ -146,7 +146,7 @@ const app = smarthome();
 app.onSync(async (body, headers) => {
   functions.logger.log('onSync', {body, headers});
 
-  const {userId, agentId} = await queryUserFromHeaders(headers);
+  const {id: userId, agentId} = await queryUserFromHeaders(headers);
 
   functions.logger.log(`agentId = ${agentId}`);
 
