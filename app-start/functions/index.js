@@ -33,8 +33,6 @@ const homegraph = google.homegraph({
   version: 'v1',
   auth: auth,
 });
-// Hardcoded user ID
-const USER_ID = '123';
 
 exports.login = functions.https.onRequest((request, response) => {
   if (request.method === 'GET') {
@@ -157,7 +155,7 @@ app.onSync(async (body, headers) => {
     payload: {
       agentUserId: agentId,
       devices: [{
-        id: 'washer',
+        id: `${userId}Washer`,
         type: 'action.devices.types.WASHER',
         traits: [
           'action.devices.traits.OnOff',
@@ -187,28 +185,12 @@ app.onSync(async (body, headers) => {
   };
 });
 
-const queryFirebase = async (deviceId)=> {
-  const snapshot = await firebaseRef.child(deviceId).once('value');
-  const snapshotVal = snapshot.val();
-  return {
-    on: snapshotVal.OnOff.on,
-    isPaused: snapshotVal.StartStop.isPaused,
-    isRunning: snapshotVal.StartStop.isRunning,
-  };
-};
-
 const queryUser = async (userId)=>{
   const snapshot = await firebaseRef.child('users')
       .child(userId).once('value');
   const result = snapshot.val();
   result.id = userId;
   return result;
-};
-
-const queryUserFromHeaders = async (headers) =>{
-  const bearerToken = headers.authorization.substring(
-      7, headers.authorization.length);
-  return queryUserByToken(bearerToken);
 };
 
 const queryUserByToken = async (token)=>{
@@ -221,13 +203,21 @@ const queryUserByToken = async (token)=>{
   return queryUser(userId);
 };
 
+const queryUserFromHeaders = async (headers) =>{
+  const bearerToken = headers.authorization.substring(
+      7, headers.authorization.length);
+  return queryUserByToken(bearerToken);
+};
 
 const queryDevice = async (deviceId) => {
-  const data = await queryFirebase(deviceId);
+  const snapshot = await firebaseRef.child('devices')
+      .child(deviceId).once('value');
+  const snapshotVal = snapshot.val();
+
   return {
-    on: data.on,
-    isPaused: data.isPaused,
-    isRunning: data.isRunning,
+    on: snapshotVal.OnOff.on,
+    isPaused: snapshotVal.StartStop.isPaused,
+    isRunning: snapshotVal.StartStop.isRunning,
     currentRunCycle: [{
       currentCycle: 'rinse',
       nextCycle: 'spin',
@@ -265,18 +255,19 @@ app.onQuery(async (body) => {
 const updateDevice = async (execution, deviceId) => {
   const {params, command} = execution;
   let state; let ref;
+
   switch (command) {
     case 'action.devices.commands.OnOff':
       state = {on: params.on};
-      ref = firebaseRef.child(deviceId).child('OnOff');
+      ref = firebaseRef.child('devices').child(deviceId).child('OnOff');
       break;
     case 'action.devices.commands.StartStop':
       state = {isRunning: params.start};
-      ref = firebaseRef.child(deviceId).child('StartStop');
+      ref = firebaseRef.child('devices').child(deviceId).child('StartStop');
       break;
     case 'action.devices.commands.PauseUnpause':
       state = {isPaused: params.pause};
-      ref = firebaseRef.child(deviceId).child('StartStop');
+      ref = firebaseRef.child('devices').child(deviceId).child('StartStop');
       break;
   }
 
@@ -331,12 +322,11 @@ exports.smarthome = functions.https.onRequest(app);
 
 exports.requestsync = functions.https.onRequest(async (request, response) => {
   response.set('Access-Control-Allow-Origin', '*');
-  functions.logger.info(`Request SYNC for user ${USER_ID}`);
+  functions.logger.info(`Request SYNC for user ${request.agentUserId}`);
   try {
     const res = await homegraph.devices.requestSync({
       requestBody: {
-        // TODO: 這邊要去讀取他的 agentId
-        agentUserId: USER_ID,
+        agentUserId: request.agentUserId,
       },
     });
     functions.logger.info('Request sync response:', res.status, res.data);
@@ -351,14 +341,16 @@ exports.requestsync = functions.https.onRequest(async (request, response) => {
  * Send a REPORT STATE call to the homegraph when data for any device id
  * has been changed.
  */
-exports.reportstate = functions.database.ref('{deviceId}').onWrite(
+exports.reportstate = functions.database.ref('devices/{deviceId}').onWrite(
     async (change, context) => {
       functions.logger.info('Firebase write event triggered Report State');
       const snapshot = change.after.val();
 
+      const {agentId: agentUserId} = await queryUser(snapshot.userId);
+
       const requestBody = {
         requestId: 'ff36a3cc', /* Any unique ID */
-        agentUserId: USER_ID,
+        agentUserId,
         payload: {
           devices: {
             states: {
