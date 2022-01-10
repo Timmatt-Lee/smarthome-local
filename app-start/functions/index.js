@@ -90,45 +90,59 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
   const refreshToken = request.query.refresh_token ?
   request.query.refresh_token : request.body.refresh_token;
 
-  // HACK: 照理說應該要去 db 拿 這個臨時 token，先去檢驗有沒有是不是有過期，然後再來對照他的使用者是誰，找到這個使用者這樣
-  const userId = Buffer.from(request.body.code, 'base64').toString('ascii');
-
   const secondsInDay = 86400; // 60 * 60 * 24
   const HTTP_STATUS_OK = 200;
 
-  functions.logger.log('fakeToken', {
-    grantType, refreshToken, userId,
-  });
-
   let obj;
+
 
   const accessToken = randomUUID();
 
-  // TODO: 如果找不到使用者？要處理這個錯誤
-
-  await firebaseRef.child('userAccessTokens').child(accessToken).set({
-    expiredAt: new Date()+secondsInDay,
-    userId,
-  });
-
-  await firebaseRef.child('users').child(userId)
-      .child('expiredAt').set(new Date()+secondsInDay);
-
-  await firebaseRef.child('users').child(userId)
-      .child('accessToken').set(accessToken);
-
   if (grantType === 'authorization_code') {
+    // HACK: 照理說應該要去 db 拿 這個臨時 token，先去檢驗有沒有是不是有過期，然後再來對照他的使用者是誰，找到這個使用者這樣
+    const userId = Buffer.from(request.body.code, 'base64').toString('ascii');
+    // TODO: 如果找不到使用者？要處理這個錯誤
+
+    functions.logger.log('Authorization Code', {
+      userId,
+    });
+
+    await firebaseRef.child('userAccessTokens').child(accessToken).set({
+      expiredAt: new Date()+secondsInDay,
+      userId,
+    });
+
+    const refreshToken = randomUUID();
+
+    await firebaseRef.child('userAccessTokens').child(refreshToken).set({
+      expiredAt: new Date()+secondsInDay,
+      userId,
+      isRefreshToken: true,
+    });
+
     obj = {
       token_type: 'bearer',
       access_token: accessToken,
-      refresh_token: '123refresh',
+      refresh_token: refreshToken,
       expires_in: secondsInDay,
     };
   } else if (grantType === 'refresh_token') {
-    if (refreshToken !== '123refresh') {
+    const snapshot = await firebaseRef.child('userAccessTokens')
+        .child(refreshToken).once('value');
+    const {isRefreshToken, userId} = snapshot.val();
+
+    if (isRefreshToken !== true) {
       response.status(400).json({error: 'invalid_grant'});
       return;
     }
+
+    // TODO: 把原本的舊有 token disable 掉
+
+    await firebaseRef.child('userAccessTokens').child(accessToken).set({
+      expiredAt: new Date()+secondsInDay,
+      userId,
+    });
+
     obj = {
       token_type: 'bearer',
       access_token: accessToken,
