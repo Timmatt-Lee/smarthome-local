@@ -143,12 +143,12 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
 
 const app = smarthome();
 
-app.onSync((body, headers) => {
+app.onSync(async (body, headers) => {
   functions.logger.log('onSync', {body, headers});
 
   const bearerToken = headers.authorization.substring(
       7, headers.authorization.length);
-  const {userId, agentId} = queryUserByToken(bearerToken);
+  const {userId, agentId} = await queryUserByToken(bearerToken);
 
   functions.logger.log(`agentId = ${agentId}`);
 
