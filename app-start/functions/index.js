@@ -343,10 +343,12 @@ const updateDevice = async (execution, deviceId) => {
       break;
     case 'action.devices.commands.StartStop':
       state = {isRunning: params.start};
+      if (params.start) state.isPaused = false;
       ref = firebaseRef.child('devices').child(deviceId).child('StartStop');
       break;
     case 'action.devices.commands.PauseUnpause':
       state = {isPaused: params.pause};
+      if (params.pause) state.isRunning = false;
       ref = firebaseRef.child('devices').child(deviceId).child('StartStop');
       break;
   }
