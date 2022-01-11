@@ -39,26 +39,26 @@ exports.login = functions.https.onRequest((request, response) => {
   if (request.method === 'GET') {
     functions.logger.log('Requesting login page');
     response.send(`
-    <html>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <body>
-        <form action="/login" method="post">
-          <input type="hidden"
-            name="responseurl" value="${request.query.responseurl}" />
-          <input type="radio" id="userIdTimmatt" name="userId" 
-            value="Timmatt" checked>
-          <label for="userIdTimmatt">Timmatt</label><br>
-          <input type="radio" id="userIdJohn" name="userId" value="John">
-          <label for="userIdJohn">John</label><br>
-          <input type="radio" id="userIdMT" name="userId" value="MT">
-          <label for="userIdMT">MT</label><br>
-          <button type="submit">
-            Link this service to Google
-          </button>
-        </form>
-      </body>
-    </html>
-  `);
+     <html>
+       <meta name="viewport" content="width=device-width, initial-scale=1">
+       <body>
+         <form action="/login" method="post">
+           <input type="hidden"
+             name="responseurl" value="${request.query.responseurl}" />
+           <input type="radio" id="userIdTimmatt" name="userId" 
+             value="Timmatt" checked>
+           <label for="userIdTimmatt">Timmatt</label><br>
+           <input type="radio" id="userIdJohn" name="userId" value="John">
+           <label for="userIdJohn">John</label><br>
+           <input type="radio" id="userIdMT" name="userId" value="MT">
+           <label for="userIdMT">MT</label><br>
+           <button type="submit">
+             Link this service to Google
+           </button>
+         </form>
+       </body>
+     </html>
+   `);
   } else if (request.method === 'POST') {
     // Here, you should validate the user account.
     // In this sample, we do not do that.
@@ -92,11 +92,11 @@ exports.fakeauth = functions.https.onRequest((request, response) => {
 
 exports.faketoken = functions.https.onRequest(async (request, response) => {
   const grantType = request.query.grant_type ?
-    request.query.grant_type :
-    request.body.grant_type;
+     request.query.grant_type :
+     request.body.grant_type;
   const refreshToken = request.query.refresh_token ?
-    request.query.refresh_token :
-    request.body.refresh_token;
+     request.query.refresh_token :
+     request.body.refresh_token;
 
   const secondsInDay = 86400; // 60 * 60 * 24
   const HTTP_STATUS_OK = 200;
@@ -318,7 +318,7 @@ app.onQuery(async (body) => {
     const deviceId = device.id;
     queryPromises.push(
         getSmartHomeDevice(deviceId).then((data) => {
-        // Add response to device payload
+          // Add response to device payload
           payload.devices[deviceId] = data;
         }),
     );
@@ -419,9 +419,9 @@ exports.requestsync = functions.https.onRequest(async (request, response) => {
 });
 
 /**
- * Send a REPORT STATE call to the homegraph when data for any device id
- * has been changed.
- */
+  * Send a REPORT STATE call to the homegraph when data for any device id
+  * has been changed.
+  */
 exports.reportstate = functions.database
     .ref('devices/{deviceId}')
     .onWrite(async (change, context) => {
@@ -436,7 +436,7 @@ exports.reportstate = functions.database
         payload: {
           devices: {
             states: {
-            /* Report the current state of our washer */
+              /* Report the current state of our washer */
               [context.params.deviceId]: {
                 on: snapshot.OnOff.on,
                 isPaused: snapshot.StartStop.isPaused,
@@ -454,8 +454,8 @@ exports.reportstate = functions.database
     });
 
 /**
- * Update the current state of the washer device
- */
+  * Update the current state of the washer device
+  */
 exports.updatestate = functions.https.onRequest((request, response) => {
   firebaseRef.child('devices').child(request.body.deviceId).update({
     OnOff: {
