@@ -1,12 +1,4 @@
 {
-  "cSpell.words": [
-    "Codelab",
-    "homegraph",
-    "pausable",
-    "reportstate",
-    "requestsync",
-    "responseurl",
-    "updatestate"
-  ],
+  "cSpell.words": ["Codelab", "homegraph", "pausable"],
   "editor.formatOnSave": true
 }

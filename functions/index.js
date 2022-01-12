@@ -39,64 +39,64 @@ exports.login = functions.https.onRequest((request, response) => {
   if (request.method === 'GET') {
     functions.logger.log('Requesting login page');
     response.send(`
-     <html>
-       <meta name="viewport" content="width=device-width, initial-scale=1">
-       <body>
-         <form action="/login" method="post">
-           <input type="hidden"
-             name="responseurl" value="${request.query.responseurl}" />
-           <input type="radio" id="userIdTimmatt" name="userId" 
-             value="Timmatt" checked>
-           <label for="userIdTimmatt">Timmatt</label><br>
-           <input type="radio" id="userIdJohn" name="userId" value="John">
-           <label for="userIdJohn">John</label><br>
-           <input type="radio" id="userIdMT" name="userId" value="MT">
-           <label for="userIdMT">MT</label><br>
-           <button type="submit">
-             Link this service to Google
-           </button>
-         </form>
-       </body>
-     </html>
-   `);
+    <html>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <body>
+        <form action="/login" method="post">
+          <input type="hidden"
+            name="responseUrl" value="${request.query.responseUrl}" />
+          <input type="radio" id="userIdTimmatt" name="userId" 
+            value="eca2f3e3" checked>
+          <label for="userIdTimmatt">Timmatt</label><br>
+          <input type="radio" id="userIdJohn" name="userId" value="7df360a3">
+          <label for="userIdJohn">John</label><br>
+          <input type="radio" id="userIdMT" name="userId" value="5ac9e5f6">
+          <label for="userIdMT">MT</label><br>
+          <button type="submit">
+            Link this service to Google
+          </button>
+        </form>
+      </body>
+    </html>
+  `);
   } else if (request.method === 'POST') {
     // Here, you should validate the user account.
     // In this sample, we do not do that.
     // HACK: 我先直接用使用者名稱 base64 傳回去，不過最好應該還是造一個臨時 token 存在 db
     //       然後等下面的 faketoken 一跑進去，驗證這個臨時 token ！這個 token 就直接作廢
     //       而且這個 token 在 db 的時候應該是要指定這個使用者的
-    const responseurl = util.format(
+    const responseUrl = util.format(
         '%s&code=%s',
-        decodeURIComponent(request.body.responseurl),
+        decodeURIComponent(request.body.responseUrl),
         Buffer.from(request.body.userId).toString('base64'),
     );
-    functions.logger.log(`Redirect to ${responseurl}`);
-    return response.redirect(responseurl);
+    functions.logger.log(`Redirect to ${responseUrl}`);
+    return response.redirect(responseUrl);
   } else {
     // Unsupported method
     response.send(405, 'Method Not Allowed');
   }
 });
 
-exports.fakeauth = functions.https.onRequest((request, response) => {
-  const responseurl = util.format(
+exports.auth = functions.https.onRequest((request, response) => {
+  const responseUrl = util.format(
       '%s?state=%s',
       decodeURIComponent(request.query.redirect_uri),
       request.query.state,
   );
-  functions.logger.log(`Set redirect as ${responseurl}`);
+  functions.logger.log(`Set redirect as ${responseUrl}`);
   return response.redirect(
-      `/login?responseurl=${encodeURIComponent(responseurl)}`,
+      `/login?responseUrl=${encodeURIComponent(responseUrl)}`,
   );
 });
 
-exports.faketoken = functions.https.onRequest(async (request, response) => {
+exports.token = functions.https.onRequest(async (request, response) => {
   const grantType = request.query.grant_type ?
-     request.query.grant_type :
-     request.body.grant_type;
+    request.query.grant_type :
+    request.body.grant_type;
   const refreshToken = request.query.refresh_token ?
-     request.query.refresh_token :
-     request.body.refresh_token;
+    request.query.refresh_token :
+    request.body.refresh_token;
 
   const secondsInDay = 86400; // 60 * 60 * 24
   const HTTP_STATUS_OK = 200;
@@ -115,7 +115,8 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
     });
 
     await firebaseRef
-        .child('userAccessTokens')
+        .child('tokens')
+        .child('access')
         .child(accessToken)
         .set({
           expiredAt: new Date() + secondsInDay,
@@ -125,13 +126,12 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
     const refreshToken = randomUUID();
 
     await firebaseRef
-        .child('userAccessTokens')
+        .child('tokens')
+        .child('refresh')
         .child(refreshToken)
         .set({
           expiredAt: new Date() + secondsInDay,
           userId,
-          accessToken,
-          isRefreshToken: true,
         });
 
     obj = {
@@ -142,7 +142,8 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
     };
   } else if (grantType === 'refresh_token') {
     const snapshot = await firebaseRef
-        .child('userAccessTokens')
+        .child('tokens')
+        .child('refresh')
         .child(refreshToken)
         .once('value');
 
@@ -161,16 +162,12 @@ exports.faketoken = functions.https.onRequest(async (request, response) => {
     const {
       isRefreshToken,
       userId,
-      accessToken: oldAccessToken,
     } = snapshot.val();
     assert.ok(isRefreshToken === true);
 
-    // TODO: 把原本的舊有 token disable 掉
-
-    await firebaseRef.child('userAccessTokens').child(oldAccessToken).remove();
-
     await firebaseRef
-        .child('userAccessTokens')
+        .child('tokens')
+        .child('access')
         .child(accessToken)
         .set({
           expiredAt: new Date() + secondsInDay,
@@ -191,69 +188,42 @@ const app = smarthome();
 app.onSync(async (body, headers) => {
   functions.logger.log('onSync', {body, headers});
 
-  const userDoc = await queryUserFromHeaders(headers);
+  // FIXME: 我應該要有個 middleware 擋在這個 app 前面，然後去做身份驗證，讓這邊都只用 agentId 去做事
+  //        不過因為現在先偷懶，所以只有在 onSync 的時候去真的判斷使用者，其他的函式就不判斷了，反正大家都是洗衣機
+  const userDoc = await getUserFromHeaders(headers);
   if (userDoc === undefined) {
     functions.logger.warn('Cannot found user in db while onSync.');
     return {};
   }
 
-  const {id: userId, agentId} = userDoc;
+  const {agentId, devices} = userDoc;
 
-  functions.logger.log(`agentId = ${agentId}`);
+  functions.logger.log('User found on Sync', userDoc);
 
-  const [defaultDeviceObj] = await queryDevicesFromUserId(userId);
+  const smartHomeDeviceDocs = await getSmartHomeDevicesByUserDeviceIds(devices);
 
-  // FIXME: 我應該要有個 middleware 擋在這個 app 前面，然後去做身份驗證，讓這邊都只用 agentId 去做事
-  //        不過因為現在先偷懶，所以只有在 onSync 的時候去真的判斷使用者，其他的函式就不判斷了，反正大家都是洗衣機
-  return {
+  const res = {
     requestId: body.requestId,
     payload: {
       agentUserId: agentId,
-      devices: [
-        {
-          id: `${userId}Washer`,
-          type: 'action.devices.types.WASHER',
-          traits: [
-            'action.devices.traits.OnOff',
-            'action.devices.traits.StartStop',
-            'action.devices.traits.RunCycle',
-          ],
-          name: {
-            defaultNames: [defaultDeviceObj.defaultName],
-            name: defaultDeviceObj.defaultName,
-            nicknames: [defaultDeviceObj.defaultName],
-          },
-          deviceInfo: {
-            manufacturer: 'Acme Co',
-            model: 'acme-washer',
-            hwVersion: '1.0',
-            swVersion: '1.0.1',
-          },
-          willReportState: true,
-          attributes: {
-            pausable: true,
-          },
-          otherDeviceIds: [
-            {
-              deviceId: 'TimmattVirtualDevice1',
-            },
-          ],
-        },
-      ],
+      devices: smartHomeDeviceDocs,
     },
   };
+
+  functions.logger.log('Response on Sync', {res: JSON.stringify(res)});
+
+  return res;
 });
 
-const queryUser = async (userId) => {
+const getUserById = async (userId) => {
   const snapshot = await firebaseRef.child('users').child(userId).once('value');
-  const result = snapshot.val();
-  result.id = userId;
-  return result;
+  return snapshot.val();
 };
 
-const queryUserByToken = async (token) => {
+const getUserByToken = async (token) => {
   const snapshot = await firebaseRef
-      .child('userAccessTokens')
+      .child('tokens')
+      .child('access')
       .child(token)
       .once('value');
 
@@ -264,18 +234,18 @@ const queryUserByToken = async (token) => {
   }
 
   const {userId} = snapshot.val();
-  return queryUser(userId);
+  return getUserById(userId);
 };
 
-const queryUserFromHeaders = async (headers) => {
+const getUserFromHeaders = async (headers) => {
   const bearerToken = headers.authorization.substring(
       7,
       headers.authorization.length,
   );
-  return queryUserByToken(bearerToken);
+  return getUserByToken(bearerToken);
 };
 
-const queryDevice = async (deviceId) => {
+const getDeviceById = async (deviceId) => {
   const snapshot = await firebaseRef
       .child('devices')
       .child(deviceId)
@@ -283,28 +253,61 @@ const queryDevice = async (deviceId) => {
   return snapshot.val();
 };
 
-const queryDevicesFromUserId = async (userId) =>{
-  // TODO: 這邊應該用 db 外鍵去紀錄這個使用者有哪些裝置
-  return [await queryDevice(`${userId}Washer`)];
+const getSmartHomeDevice = async (deviceId) => {
+  const result = await getDeviceById(deviceId);
+  result.type = `action.devices.types.${result.type}`;
+  result.traits = result.traits.map((trait)=>`action.devices.traits.${trait}`);
+  return result;
 };
 
-const getSmartHomeDevice = async (deviceId) => {
-  const snapshotVal = await queryDevice(deviceId);
+const getSmartHomeDevicesByUserDeviceIds = async (userDeviceIds) => {
+  return Promise.all(
+      userDeviceIds.map(
+          async (userDeviceId) =>{
+            const {name, deviceId} = await getUserDeviceById(userDeviceId);
+            const res = await getSmartHomeDevice(deviceId);
+            res.id = userDeviceId;
+            res.name.name = name;
+            return res;
+          },
+      ),
+  );
+};
 
-  return {
-    on: snapshotVal.OnOff.on,
-    isPaused: snapshotVal.StartStop.isPaused,
-    isRunning: snapshotVal.StartStop.isRunning,
-    currentRunCycle: [
-      {
-        currentCycle: 'rinse',
-        nextCycle: 'spin',
-        lang: 'en',
-      },
-    ],
-    currentTotalRemainingTime: 1212,
-    currentCycleRemainingTime: 301,
-  };
+const getUserDeviceById = async (userDeviceId) => {
+  const snapshot = await firebaseRef
+      .child('userDevices')
+      .child(userDeviceId)
+      .once('value');
+  return snapshot.val();
+};
+
+const getUserSmartHomeDevice = async (userDeviceId) => {
+  const userDeviceDoc = await getUserDeviceById(userDeviceId);
+  const deviceDoc = await getDeviceById(userDeviceDoc.deviceId);
+
+  switch (deviceDoc.type) {
+    case 'FAN':
+      return {
+        on: userDeviceDoc.isOn,
+        isRunning: userDeviceDoc.isRunning,
+      };
+    case 'WASHER':
+      return {
+        on: userDeviceDoc.isOn,
+        isPaused: userDeviceDoc.isPaused,
+        isRunning: userDeviceDoc.isRunning,
+        currentRunCycle: [
+          {
+            currentCycle: 'rinse',
+            nextCycle: 'spin',
+            lang: 'en',
+          },
+        ],
+        currentTotalRemainingTime: 1212,
+        currentCycleRemainingTime: 301,
+      };
+  }
 };
 
 app.onQuery(async (body) => {
@@ -315,11 +318,11 @@ app.onQuery(async (body) => {
   const queryPromises = [];
   const intent = body.inputs[0];
   for (const device of intent.payload.devices) {
-    const deviceId = device.id;
+    const userDeviceId = device.id;
     queryPromises.push(
-        getSmartHomeDevice(deviceId).then((data) => {
-          // Add response to device payload
-          payload.devices[deviceId] = data;
+        getUserSmartHomeDevice(userDeviceId).then((data) => {
+        // Add response to device payload
+          payload.devices[userDeviceId] = data;
         }),
     );
   }
@@ -331,29 +334,30 @@ app.onQuery(async (body) => {
   };
 });
 
-const updateDevice = async (execution, deviceId) => {
+const updateDevice = async (execution, userDeviceId) => {
   const {params, command} = execution;
   let state;
-  let ref;
+  const ref = firebaseRef.child('userDevices').child(userDeviceId);
+
+  // TODO: 應該要判斷他的 device 支不支援以下的命令
 
   switch (command) {
     case 'action.devices.commands.OnOff':
-      state = {on: params.on};
-      ref = firebaseRef.child('devices').child(deviceId).child('OnOff');
+      state = {isOn: params.on};
       break;
     case 'action.devices.commands.StartStop':
       state = {isRunning: params.start};
       if (params.start) state.isPaused = false;
-      ref = firebaseRef.child('devices').child(deviceId).child('StartStop');
       break;
     case 'action.devices.commands.PauseUnpause':
       state = {isPaused: params.pause};
       if (params.pause) state.isRunning = false;
-      ref = firebaseRef.child('devices').child(deviceId).child('StartStop');
       break;
   }
 
-  return ref.update(state).then(() => state);
+  await ref.update(state);
+
+  return state;
 };
 
 app.onExecute(async (body) => {
@@ -401,7 +405,7 @@ app.onDisconnect((body, headers) => {
 
 exports.smarthome = functions.https.onRequest(app);
 
-exports.requestsync = functions.https.onRequest(async (request, response) => {
+exports.requestSync = functions.https.onRequest(async (request, response) => {
   response.set('Access-Control-Allow-Origin', '*');
   functions.logger.info(`Request SYNC for user ${request.query.agentUserId}`);
   try {
@@ -419,16 +423,16 @@ exports.requestsync = functions.https.onRequest(async (request, response) => {
 });
 
 /**
-  * Send a REPORT STATE call to the homegraph when data for any device id
-  * has been changed.
-  */
-exports.reportstate = functions.database
-    .ref('devices/{deviceId}')
+ * Send a REPORT STATE call to the homegraph when data for any device id
+ * has been changed.
+ */
+exports.reportState = functions.database
+    .ref('userDevices/{userDeviceId}')
     .onWrite(async (change, context) => {
       functions.logger.info('Firebase write event triggered Report State');
       const snapshot = change.after.val();
 
-      const {agentId: agentUserId} = await queryUser(snapshot.userId);
+      const {agentId: agentUserId} = await getUserById(snapshot.userId);
 
       const requestBody = {
         requestId: 'ff36a3cc' /* Any unique ID */,
@@ -436,11 +440,12 @@ exports.reportstate = functions.database
         payload: {
           devices: {
             states: {
-              /* Report the current state of our washer */
-              [context.params.deviceId]: {
-                on: snapshot.OnOff.on,
-                isPaused: snapshot.StartStop.isPaused,
-                isRunning: snapshot.StartStop.isRunning,
+            /* Report the current state of our washer */
+              [context.params.userDeviceId]: {
+                // TODO: 判斷 deviceId 看他是什麼型別，然後吐回相對應的狀態
+                on: snapshot.isOn,
+                isPaused: snapshot.isPaused,
+                isRunning: snapshot.isRunning,
               },
             },
           },
@@ -454,17 +459,13 @@ exports.reportstate = functions.database
     });
 
 /**
-  * Update the current state of the washer device
-  */
-exports.updatestate = functions.https.onRequest((request, response) => {
-  firebaseRef.child('devices').child(request.body.deviceId).update({
-    OnOff: {
-      on: request.body.on,
-    },
-    StartStop: {
-      isPaused: request.body.isPaused,
-      isRunning: request.body.isRunning,
-    },
+ * Update the current state of the washer device
+ */
+exports.updateState = functions.https.onRequest((request, response) => {
+  firebaseRef.child('userDevices').child(request.body.userDeviceId).update({
+    isOn: request.body.isOn,
+    isPaused: request.body.isPaused,
+    isRunning: request.body.isRunning,
   });
 
   return response.status(200).end();

@@ -27,7 +27,7 @@ class Washer {
    * @param {string} deviceId Device id on cloud db
    */
   constructor(projectId, deviceId) {
-    this.reportStateEndpointUrl = `https://${projectId}.firebaseapp.com/updatestate`;
+    this.reportStateEndpointUrl = `https://${projectId}.firebaseapp.com/update-state`;
     this.deviceId = deviceId;
     this._state = {
       on: false,

@@ -1,0 +1,208 @@
+{
+  "userDevices": {
+    "washer-fdbf732a": {
+      "deviceId": "washer-52d9dcbe",
+      "isOn": true,
+      "runCycle": {
+        "isDummy": false
+      },
+      "isPaused": true,
+      "isRunning": true,
+      "currentToggleSettings": {
+        "ecoToggle": true
+      },
+      "name": "John washer",
+      "userId": "7df360a3"
+    },
+    "washer-c1aea16c": {
+      "deviceId": "washer-52d9dcbe",
+      "isOn": false,
+      "runCycle": {
+        "isDummy": false
+      },
+      "isPaused": false,
+      "isRunning": false,
+      "currentToggleSettings": {
+        "ecoToggle": true
+      },
+      "name": "MT Washer",
+      "userId": "5ac9e5f6"
+    },
+    "washer-1c7d0be3": {
+      "deviceId": "washer-52d9dcbe",
+      "isOn": true,
+      "runCycle": {
+        "isDummy": false
+      },
+      "isPaused": false,
+      "isRunning": false,
+      "currentToggleSettings": {
+        "ecoToggle": true
+      },
+      "name": "聽妹的洗衣機",
+      "userId": "eca2f3e3"
+    },
+    "fan-e0c82880": {
+      "deviceId": "fan-807b03e6",
+      "isOn": true,
+      "currentModeSettings": {
+        "speedMode": "silent"
+      },
+      "isRunning": false,
+      "name": "聽妹的電風扇",
+      "userId": "eca2f3e3"
+    }
+  },
+  "devices": {
+    "washer-52d9dcbe": {
+      "type": "WASHER",
+      "traits": [
+        "OnOff",
+        "StartStop",
+        "RunCycle",
+        "Toggles"
+      ],
+      "name": {
+        "defaultNames": [
+          "Washer Model 3"
+        ]
+      },
+      "deviceInfo": {
+        "manufacturer": "Timmatt IoT Co",
+        "model": "Timmatt-IoT-Washer-Model-3",
+        "hwVersion": "3.0",
+        "swVersion": "3.1.1"
+      },
+      "willReportState": true,
+      "attributes": {
+        "availableToggles": [
+          {
+            "name": "ecoToggle",
+            "name_values": [
+              {
+                "name_synonym": [
+                  "energy saving",
+                  "eco"
+                ],
+                "lang": "en"
+              }
+            ]
+          }
+        ],
+        "pausable": true
+      },
+      "otherDeviceIds": [
+        {
+          "deviceId": "Timmatt-IoT-Washer-Model-3-Local"
+        }
+      ]
+    },
+    "fan-807b03e6": {
+      "type": "FAN",
+      "traits": [
+        "OnOff",
+        "Modes"
+      ],
+      "name": {
+        "defaultNames": [
+          "Fan Model X"
+        ]
+      },
+      "attributes": {
+        "availableModes": [
+          {
+            "name": "speedMode",
+            "name_values": [
+              {
+                "lang": "en",
+                "name_synonym": [
+                  "fan",
+                  "mode",
+                  "fan mode"
+                ]
+              }
+            ],
+            "ordered": false,
+            "settings": [
+              {
+                "setting_name": "crazy",
+                "setting_values": [
+                  {
+                    "lang": "en",
+                    "setting_synonym": [
+                      "crazy",
+                      "ult",
+                      "super strong",
+                      "strong",
+                      "ultimate"
+                    ]
+                  }
+                ]
+              },
+              {
+                "setting_name": "silent",
+                "setting_values": [
+                  {
+                    "lang": "en",
+                    "setting_synonym": [
+                      "silent",
+                      "no sound"
+                    ]
+                  }
+                ]
+              },
+              {
+                "setting_name": "comfort",
+                "setting_values": [
+                  {
+                    "lang": "en",
+                    "setting_synonym": [
+                      "comfort"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "deviceInfo": {
+        "manufacturer": "Timmatt IoT Co",
+        "model": "Timmatt-IoT-Fan-Model-X",
+        "hwVersion": "10.0",
+        "swVersion": "10.2.2"
+      },
+      "willReportState": true,
+      "otherDeviceIds": [
+        {
+          "deviceId": "Timmatt-IoT-Fan-Model-X-Local"
+        }
+      ]
+    }
+  },
+  "userAccessTokens": {},
+  "users": {
+    "7df360a3": {
+      "name": "John",
+      "agentId": "agentId-2f5f0e58",
+      "devices": [
+        "washer-fdbf732a"
+      ]
+    },
+    "5ac9e5f6": {
+      "name": "MT",
+      "agentId": "agentId-437cd8a9",
+      "devices": [
+        "washer-c1aea16c"
+      ]
+    },
+    "eca2f3e3": {
+      "name": "Timmatt",
+      "agentId": "agentId-7c9ed23f",
+      "devices": [
+        "washer-1c7d0be3",
+        "fan-e0c82880"
+      ]
+    }
+  }
+}

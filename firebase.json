@@ -4,19 +4,26 @@
   },
   "hosting": {
     "public": "public",
-    "rewrites": [{
-      "source": "/requestsync",
-      "function": "requestsync"
-    }, {
-      "source": "/updatestate",
-      "function": "updatestate"
-    }],
-    "headers": [{
-      "source" : "**/*.@(js|html)",
-      "headers" : [ {
-        "key" : "Cache-Control",
-        "value" : "max-age=0"
-      } ]
-    }]
+    "rewrites": [
+      {
+        "source": "/request-sync",
+        "function": "requestSync"
+      },
+      {
+        "source": "/update-state",
+        "function": "updateState"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|html)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "max-age=0"
+          }
+        ]
+      }
+    ]
   }
 }
