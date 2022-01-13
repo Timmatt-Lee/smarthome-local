@@ -9,7 +9,7 @@
       "isPaused": true,
       "isRunning": true,
       "currentToggleSettings": {
-        "ecoToggle": true
+        "isEco": true
       },
       "name": "John washer",
       "userId": "7df360a3"
@@ -23,7 +23,7 @@
       "isPaused": false,
       "isRunning": false,
       "currentToggleSettings": {
-        "ecoToggle": true
+        "isEco": true
       },
       "name": "MT Washer",
       "userId": "5ac9e5f6"
@@ -37,7 +37,7 @@
       "isPaused": false,
       "isRunning": false,
       "currentToggleSettings": {
-        "ecoToggle": true
+        "isEco": true
       },
       "name": "聽妹的洗衣機",
       "userId": "eca2f3e3"
@@ -77,7 +77,7 @@
       "attributes": {
         "availableToggles": [
           {
-            "name": "ecoToggle",
+            "name": "isEco",
             "name_values": [
               {
                 "name_synonym": [
