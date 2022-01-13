@@ -101,7 +101,8 @@
       "type": "FAN",
       "traits": [
         "OnOff",
-        "Modes"
+        "Modes",
+        "StartStop"
       ],
       "name": {
         "defaultNames": [
