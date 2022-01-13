@@ -120,6 +120,14 @@
                   "mode",
                   "fan mode"
                 ]
+              },
+              {
+                "lang": "zh-TW",
+                "name_synonym": [
+                  "模式",
+                  "風扇模式",
+                  "轉速"
+                ]
               }
             ],
             "ordered": false,
@@ -136,6 +144,16 @@
                       "strong",
                       "ultimate"
                     ]
+                  },
+                  {
+                    "lang": "zh-TW",
+                    "setting_synonym": [
+                      "瘋狂",
+                      "鬼畜",
+                      "極限",
+                      "無法無天",
+                      "究極"
+                    ]
                   }
                 ]
               },
@@ -148,6 +166,15 @@
                       "silent",
                       "no sound"
                     ]
+                  },
+                  {
+                    "lang": "zh-TW",
+                    "setting_synonym": [
+                      "寂靜",
+                      "閉嘴",
+                      "隱形",
+                      "安靜"
+                    ]
                   }
                 ]
               },
@@ -158,6 +185,13 @@
                     "lang": "en",
                     "setting_synonym": [
                       "comfort"
+                    ]
+                  },
+                  {
+                    "lang": "zh-TW",
+                    "setting_synonym": [
+                      "舒服",
+                      "爽"
                     ]
                   }
                 ]
