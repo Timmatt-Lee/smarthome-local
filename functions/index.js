@@ -293,6 +293,7 @@ const getUserSmartHomeDevice = async (userDeviceId) => {
         isRunning: userDeviceDoc.isRunning,
         currentFanSpeedSetting: userDeviceDoc.speedSetting,
         currentFanSpeedPercent: userDeviceDoc.speedPercent,
+        currentModeSettings: {mode: userDeviceDoc.mode},
       };
     case 'WASHER':
       return {
@@ -391,6 +392,9 @@ const updateDevice = async (execution, userDeviceId) => {
           break;
         case 'action.devices.commands.Reverse':
           state = {isReverse: !userDeviceDoc.isReverse};
+          break;
+        case 'action.devices.commands.SetModes':
+          state = {mode: params.updateModeSettings.mode};
           break;
       }
       break;
@@ -501,6 +505,7 @@ exports.reportState = functions.database
             isRunning: snapshot.isRunning,
             currentFanSpeedSetting: snapshot.speedSetting,
             currentFanSpeedPercent: snapshot.speedPercent,
+            currentModeSettings: {mode: snapshot.mode},
           };
           break;
         case 'WASHER':

@@ -8,9 +8,7 @@
       },
       "isPaused": true,
       "isRunning": true,
-      "currentToggleSettings": {
-        "isEco": true
-      },
+      "isEco": true,
       "name": "John washer",
       "userId": "7df360a3"
     },
@@ -22,9 +20,7 @@
       },
       "isPaused": false,
       "isRunning": false,
-      "currentToggleSettings": {
-        "isEco": true
-      },
+      "isEco": true,
       "name": "MT Washer",
       "userId": "5ac9e5f6"
     },
@@ -36,18 +32,14 @@
       },
       "isPaused": false,
       "isRunning": false,
-      "currentToggleSettings": {
-        "isEco": true
-      },
+      "isEco": true,
       "name": "聽妹的洗衣機",
       "userId": "eca2f3e3"
     },
     "fan-e0c82880": {
       "deviceId": "fan-807b03e6",
       "isOn": true,
-      "currentModeSettings": {
-        "speedMode": "silent"
-      },
+      "mode": "silent",
       "speedSetting": "slow",
       "speedPercent": 10,
       "isReverse": false,
@@ -147,7 +139,7 @@
         "supportsFanSpeedPercent": true,
         "availableModes": [
           {
-            "name": "speedMode",
+            "name": "mode",
             "name_values": [
               {
                 "lang": "en",
