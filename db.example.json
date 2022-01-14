@@ -48,6 +48,9 @@
       "currentModeSettings": {
         "speedMode": "silent"
       },
+      "speedSetting": "slow",
+      "speedPercent": 10,
+      "isReverse": false,
       "isRunning": false,
       "name": "聽妹的電風扇",
       "userId": "eca2f3e3"
@@ -102,7 +105,8 @@
       "traits": [
         "OnOff",
         "Modes",
-        "StartStop"
+        "StartStop",
+        "FanSpeed"
       ],
       "name": {
         "defaultNames": [
@@ -110,6 +114,37 @@
         ]
       },
       "attributes": {
+        "availableFanSpeeds": {
+          "speeds": [
+            {
+              "speed_name": "slow",
+              "speed_values": [
+                {
+                  "speed_synonym": [
+                    "low",
+                    "slow"
+                  ],
+                  "lang": "en"
+                }
+              ]
+            },
+            {
+              "speed_name": "fast",
+              "speed_values": [
+                {
+                  "speed_synonym": [
+                    "high",
+                    "fast"
+                  ],
+                  "lang": "en"
+                }
+              ]
+            }
+          ],
+          "ordered": true
+        },
+        "reversible": true,
+        "supportsFanSpeedPercent": true,
         "availableModes": [
           {
             "name": "speedMode",

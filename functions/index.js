@@ -284,13 +284,15 @@ const getUserDeviceById = async (userDeviceId) => {
 
 const getUserSmartHomeDevice = async (userDeviceId) => {
   const userDeviceDoc = await getUserDeviceById(userDeviceId);
-  const deviceDoc = await getDeviceById(userDeviceDoc.deviceId);
+  const {type} = await getDeviceById(userDeviceDoc.deviceId);
 
-  switch (deviceDoc.type) {
+  switch (type) {
     case 'FAN':
       return {
         on: userDeviceDoc.isOn,
         isRunning: userDeviceDoc.isRunning,
+        currentFanSpeedSetting: userDeviceDoc.speedSetting,
+        currentFanSpeedPercent: userDeviceDoc.speedPercent,
       };
     case 'WASHER':
       return {
@@ -334,24 +336,78 @@ app.onQuery(async (body) => {
   };
 });
 
+/**
+ * Returns a number whose value is limited to the given range.
+ *
+ * Example: limit the output of this computation to between 0 and 255
+ * (x * 255).clamp(0, 255)
+ *
+ * @param {Number} min The lower boundary of the output range
+ * @param {Number} max The upper boundary of the output range
+ * @returns A number in the range [min, max]
+ * @type Number
+ */
+// eslint-disable-next-line no-extend-native
+Number.prototype.clamp = function(min, max) {
+  return Math.min(Math.max(this, min), max);
+};
+
 const updateDevice = async (execution, userDeviceId) => {
   const {params, command} = execution;
   let state;
   const ref = firebaseRef.child('userDevices').child(userDeviceId);
 
-  // TODO: 應該要判斷他的 device 支不支援以下的命令
+  const userDeviceDoc = (await ref.once('value')).val();
+  const {type} = await getDeviceById(userDeviceDoc.deviceId);
 
-  switch (command) {
-    case 'action.devices.commands.OnOff':
-      state = {isOn: params.on};
+  switch (type) {
+    case 'FAN':
+      switch (command) {
+        case 'action.devices.commands.OnOff':
+          state = {isOn: params.on};
+          break;
+        case 'action.devices.commands.StartStop':
+          state = {isRunning: params.start};
+          break;
+        case 'action.devices.commands.SetFanSpeed':
+          if (typeof(params.fanSpeed)=== 'string') {
+            state = {speedSetting: params.fanSpeed};
+          } else if (typeof(params.fanSpeedPercent)=== 'number') {
+            state = {speedPercent: params.fanSpeedPercent};
+          } else {
+            // TODO: should raise unhandled error
+          }
+          break;
+        case 'action.devices.commands.SetFanSpeedRelative':
+          if (typeof(params.fanSpeedRelativeWeight) === 'number') {
+            const newSpeed = (userDeviceDoc.speedPercent +
+              params.fanSpeedRelativeWeight*10).clamp(0, 100);
+            state = {speedPercent: newSpeed};
+          } else if (typeof(params.fanSpeedRelativePercent) === 'number') {
+            const newSpeed = (userDeviceDoc.speedPercent +
+              params.fanSpeedRelativePercent).clamp(0, 100);
+            state = {speedPercent: newSpeed};
+          }
+          break;
+        case 'action.devices.commands.Reverse':
+          state = {isReverse: !userDeviceDoc.isReverse};
+          break;
+      }
       break;
-    case 'action.devices.commands.StartStop':
-      state = {isRunning: params.start};
-      if (params.start) state.isPaused = false;
-      break;
-    case 'action.devices.commands.PauseUnpause':
-      state = {isPaused: params.pause};
-      if (params.pause) state.isRunning = false;
+    case 'WASHER':
+      switch (command) {
+        case 'action.devices.commands.OnOff':
+          state = {isOn: params.on};
+          break;
+        case 'action.devices.commands.StartStop':
+          state = {isRunning: params.start};
+          if (params.start) state.isPaused = false;
+          break;
+        case 'action.devices.commands.PauseUnpause':
+          state = {isPaused: params.pause};
+          if (params.pause) state.isRunning = false;
+          break;
+      }
       break;
   }
 
