@@ -490,6 +490,28 @@ exports.reportState = functions.database
 
       const {agentId: agentUserId} = await getUserById(snapshot.userId);
 
+      let states;
+
+      const {type} = await getDeviceById(snapshot.deviceId);
+
+      switch (type) {
+        case 'FAN':
+          states= {
+            on: snapshot.isOn,
+            isRunning: snapshot.isRunning,
+            currentFanSpeedSetting: snapshot.speedSetting,
+            currentFanSpeedPercent: snapshot.speedPercent,
+          };
+          break;
+        case 'WASHER':
+          states= {
+            on: snapshot.isOn,
+            isPaused: snapshot.isPaused,
+            isRunning: snapshot.isRunning,
+          };
+          break;
+      }
+
       const requestBody = {
         requestId: 'ff36a3cc' /* Any unique ID */,
         agentUserId,
@@ -497,16 +519,14 @@ exports.reportState = functions.database
           devices: {
             states: {
             /* Report the current state of our washer */
-              [context.params.userDeviceId]: {
-                // TODO: 判斷 deviceId 看他是什麼型別，然後吐回相對應的狀態
-                on: snapshot.isOn,
-                isPaused: snapshot.isPaused,
-                isRunning: snapshot.isRunning,
-              },
+              [context.params.userDeviceId]: states,
             },
           },
         },
       };
+
+      functions.logger.info('Report state:',
+          context.params.userDeviceId, {states, snapshot});
 
       const res = await homegraph.devices.reportStateAndNotification({
         requestBody,
