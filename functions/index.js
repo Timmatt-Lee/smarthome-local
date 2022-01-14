@@ -295,6 +295,7 @@ const getUserSmartHomeDevice = async (userDeviceId) => {
         on: userDeviceDoc.isOn,
         isPaused: userDeviceDoc.isPaused,
         isRunning: userDeviceDoc.isRunning,
+        currentToggleSettings: {isEco: userDeviceDoc.isEco},
         currentRunCycle: [
           {
             currentCycle: 'rinse',
@@ -406,6 +407,9 @@ const updateDevice = async (execution, userDeviceId) => {
           state = {isPaused: params.pause};
           if (params.pause) state.isRunning = false;
           break;
+        case 'action.devices.commands.SetToggles':
+          state = {isEco: params.updateToggleSettings.isEco};
+          break;
       }
       break;
   }
@@ -508,6 +512,7 @@ exports.reportState = functions.database
             on: snapshot.isOn,
             isPaused: snapshot.isPaused,
             isRunning: snapshot.isRunning,
+            currentToggleSettings: {isEco: snapshot.isEco},
           };
           break;
       }
