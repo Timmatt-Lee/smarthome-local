@@ -22,7 +22,6 @@ const {google} = require('googleapis');
 const util = require('util');
 const admin = require('firebase-admin');
 const {randomUUID} = require('crypto');
-const assert = require('assert');
 // Initialize Firebase
 admin.initializeApp();
 const firebaseRef = admin.database().ref('/');
@@ -159,11 +158,7 @@ exports.token = functions.https.onRequest(async (request, response) => {
       return;
     }
 
-    const {
-      isRefreshToken,
-      userId,
-    } = snapshot.val();
-    assert.ok(isRefreshToken === true);
+    const {userId} = snapshot.val();
 
     await firebaseRef
         .child('tokens')
