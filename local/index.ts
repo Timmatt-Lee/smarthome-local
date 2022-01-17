@@ -29,6 +29,17 @@ interface IWasherParams {
   on?: boolean;
   start?: boolean;
   pause?: boolean;
+  updateToggleSettings?: { isEco: boolean };
+}
+
+interface IFanParams {
+  on?: boolean;
+  start?: boolean;
+  updateModeSettings?: { mode: string };
+  fanSpeedRelativeWeight?: number;
+  fanSpeedRelativePercent?: number;
+  fanSpeed?: string;
+  fanSpeedPercent?: string;
 }
 
 class LocalExecutionApp {
@@ -84,8 +95,28 @@ class LocalExecutionApp {
       );
 
       // Convert execution params to a string for the local device
-      const params = execution.params as IWasherParams;
-      const payload = this.getDataForCommand(execution.command, params);
+      const { params } = execution;
+      let payload: { type?: string } = {};
+      let deviceType;
+
+      // TODO: 應該有更好方式去判斷裝置類別
+      if (device.id.toUpperCase().includes("WASHER")) {
+        deviceType = "WASHER";
+        payload = this.getDataForCommand(
+          execution.command,
+          params as IWasherParams
+        );
+      } else if (device.id.toUpperCase().includes("FAN")) {
+        deviceType = "FAN";
+        payload = this.getDataForCommand(
+          execution.command,
+          params as IFanParams
+        );
+      } else {
+        // TODO: 無法辨識的裝置類別
+      }
+
+      payload.type = deviceType;
 
       // Create a command to send over the local network
       const radioCommand = new DataFlow.HttpRequestData();
@@ -131,22 +162,46 @@ class LocalExecutionApp {
   /**
    * Convert execution request into a local device command
    */
-  getDataForCommand(command: string, params: IWasherParams): unknown {
+  getDataForCommand<T extends IWasherParams & IFanParams>(
+    command: string,
+    params: T
+  ): Record<string, unknown> {
     switch (command) {
       case "action.devices.commands.OnOff":
-        return {
-          on: params.on ? true : false,
-        };
-      case "action.devices.commands.StartStop":
-        return {
-          isRunning: params.start ? true : false,
-        };
-      case "action.devices.commands.PauseUnpause":
-        return {
-          isPaused: params.pause ? true : false,
-        };
+        return { isOn: params.on };
+      case "action.devices.commands.StartStop": {
+        const state: any = { isRunning: params.start };
+        if (params.start) state.isPaused = false;
+        return state;
+      }
+      case "action.devices.commands.SetFanSpeed":
+        if (typeof params.fanSpeed === "string") {
+          return { speedSetting: params.fanSpeed };
+        } else if (typeof params.fanSpeedPercent === "number") {
+          return { speedPercent: params.fanSpeedPercent };
+        } else {
+          console.error("Unknown command", command);
+          return {};
+        }
+        break;
+      case "action.devices.commands.SetFanSpeedRelative":
+        if (typeof params.fanSpeedRelativeWeight === "number") {
+          return { speedRelativeWeight: params.fanSpeedRelativeWeight };
+        } else if (typeof params.fanSpeedRelativePercent === "number") {
+          return { speedRelativePercent: params.fanSpeedRelativePercent };
+        }
+      case "action.devices.commands.Reverse":
+        return { isReverse: true };
+      case "action.devices.commands.SetModes":
+        return { mode: params.updateModeSettings?.mode };
+      case "action.devices.commands.PauseUnpause": {
+        const state: any = { isPaused: params.pause };
+        if (params.pause) state.isRunning = false;
+        return state;
+      }
+      case "action.devices.commands.SetToggles":
+        return { isEco: params.updateToggleSettings?.isEco };
       default:
-        console.error("Unknown command", command);
         return {};
     }
   }

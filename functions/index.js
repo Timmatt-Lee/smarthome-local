@@ -543,11 +543,29 @@ exports.reportState = functions.database
  * Update the current state of the washer device
  */
 exports.updateState = functions.https.onRequest((request, response) => {
-  firebaseRef.child('userDevices').child(request.body.userDeviceId).update({
-    isOn: request.body.isOn,
-    isPaused: request.body.isPaused,
-    isRunning: request.body.isRunning,
-  });
+  functions.logger.info('Update state req', request.body);
+  switch (request.body.type) {
+    case 'FAN':
+      firebaseRef.child('userDevices').child(request.body.userDeviceId).update({
+        isOn: request.body.isOn,
+        isRunning: request.body.isRunning,
+        speedPercent: request.body.speedPercent,
+        speedSetting: request.body.speedSetting,
+        mode: request.body.mode,
+        isReverse: request.body.isReverse,
+      });
+      break;
+    case 'WASHER':
+      firebaseRef.child('userDevices').child(request.body.userDeviceId).update({
+        isOn: request.body.isOn,
+        isPaused: request.body.isPaused,
+        isRunning: request.body.isRunning,
+        isEco: request.body.isEco,
+      });
+      break;
+    default:
+      return response.status(500).end();
+  }
 
   return response.status(200).end();
 });

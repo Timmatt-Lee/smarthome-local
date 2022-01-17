@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-const {createLogger, format, transports} = require('winston');
-const {combine, timestamp, printf} = format;
+import { createLogger, format, transports } from "winston";
+const { combine, timestamp, printf, colorize, prettyPrint } = format;
 
 const logger = createLogger({
   format: combine(
-      timestamp(),
-      printf((info) => {
-        return `${info.timestamp} ${info.level}: ${info.message}`;
-      })
+    timestamp({ format: () => new Date().toLocaleTimeString() }),
+    colorize(),
+    prettyPrint(),
+    printf((info) => {
+      return `${info.timestamp} ${info.level}: ${info.message}`;
+    })
   ),
-  transports: [
-    new transports.Console(),
-  ],
+  transports: [new transports.Console()],
 });
 
-module.exports = logger;
+export default logger;
